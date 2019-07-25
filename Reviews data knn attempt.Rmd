@@ -1,0 +1,51 @@
+---
+title: "Project Zip Quadratic Reg"
+author: "Thomas"
+date: "7/24/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+data.frame=read.csv("zip code percent changes quad reg.csv",header=T)
+```
+
+
+```{r setup, include=FALSE}
+attach(data.frame
+```
+
+
+```{r setup, include=FALSE}
+quadReg=lm(Prices ~ Percent.2)
+```
+
+
+
+
+```{r setup, include=FALSE}
+library(kknn)
+```
+```{r}
+train = data.frame(Prices,Percent.2)
+test = data.frame(Prices,Percent.2)
+ind = order(test[,1])
+test =test[ind,]
+
+MSE=NULL
+
+kk = c(2,10,20,30)
+
+for(i in kk){
+  
+  near = kknn(Prices~Percent.2,train,test,k=i,kernel = "rectangular")
+  aux = mean((test[,2]-near$fitted)^2)
+  
+  MSE = c(MSE,aux)
+  
+  plot(Percent.2,Prices,main=paste("k=",i),pch=19,cex=0.8,col="darkgray")
+  lines(test[,1],near$fitted,col=2,lwd=2)
+  cat ("Press [enter] to continue")
+  line <- readline()
+}
+```
+
