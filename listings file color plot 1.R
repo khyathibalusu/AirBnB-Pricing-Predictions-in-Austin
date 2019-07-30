@@ -1,5 +1,6 @@
 library(kknn)
 library(tree)
+library(ggplot2)
 
 data=read.csv('listings with reviews percent change added cleaned.csv')
 
@@ -13,6 +14,11 @@ attach(df)
 
 
 plot(longitude, latitude, col=percent.change)
+#ggplot(data, aes(latitude,longitude, fill=percent.change),scale_fill_gradientn(low = "#132B43", high = "#56B1F7"))
+ggplot(data, aes(latitude, longitude)) +
+  geom_point(aes(colour = percent.change)) +
+  scale_colour_gradient(colours = terrain.colors(9))
+
 #symbols(longitude, latitude, circles=percent.change, inches=0.1)
 
 
