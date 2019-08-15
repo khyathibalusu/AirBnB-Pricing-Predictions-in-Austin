@@ -1,0 +1,255 @@
+---
+title: "R_Project"
+author: "Shuheng.Ma"
+date: "8/7/2019"
+output: pdf_document
+---
+
+
+```{r}
+library(ISLR)
+library(glmnet)
+library(lattice)
+library(ggplot2)
+library(caret)
+library(Matrix)
+library(foreach)
+library(pls)
+```
+
+
+# Data clean Part
+# SOMEHOW This part of code cannot be put into R-markdown, otherwise will result in error.
+
+rm(list=ls())
+setwd('C:/Users/mshch96/Desktop/Predictive Models/R Scripts/R_dir/project')
+airbnb = read.csv("listings.csv")
+nrow(airbnb)
+
+airbnb <- airbnb[which(airbnb$city=='Austin'),]
+attach(airbnb)
+
+int_var_orig <- c('price','accommodates','bathrooms' ,'bedrooms','beds',
+                  'guests_included','security_deposit','cleaning_fee')  
+int_var <- c('price','accommodates','bathrooms' ,'bedrooms','beds',
+             'guests_included','host_response_time','host_is_superhost'
+             ,'number_of_reviews','cancellation_policy','maximum_nights','availability_365',
+             'availability_30','availability_60','availability_90','neighbourhood_cleansed',
+             'host_total_listings_count','host_identity_verified','calculated_host_listings_count',
+             'beds','room_type','property_type')
+airb <- airbnb[int_var] # 9556
+airb <- na.omit(airb) #9506
+#summary(airb)
+nrow(airb) #9506
+
+attach(airb)
+
+airb$price= as.numeric(gsub("\\$", "", airb$price))
+length(airb$price) #9506
+summary(airb$price) #415 na 
+
+airb$security_deposit= as.numeric(gsub("\\$", "", airb$security_deposit))
+security_deposit
+summary(airb$security_deposit) # 5717 missing values, drop! 
+
+airb$cleaning_fee = as.numeric(gsub("\\$", "", airb$cleaning_fee))
+airb$cleaning_fee
+summary(airb$cleaning_fee) # 3320 missing values, drop! 
+host_is_superhost = as.factor(airb$host_is_superhost)
+host_is_superhost = ifelse(host_is_superhost=="t",1,0)
+length(host_is_superhost)
+#airb <- na.omit(airb)
+
+#NA2mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+#replace(cleaning_fee, TRUE, lapply(cleaning_fee, NA2mean))
+#lapply(cleaning_fee,NA2mean)
+#summary(cleaning_fee)
+
+airb = na.omit(airb) #9091
+nrow(airb) #9091
+summary(airb)
+
+
+#install.packages("dplyr")
+library(dplyr)
+airb=airb %>% filter(airb$price!=0)
+
+lm_accom = lm(price~accommodates) #31% 
+summary(lm_accom)
+
+lm_bath = lm(price~bathrooms)
+summary(lm_bath)
+
+
+attach(airb)
+length(accommodates) #9090
+
+
+
+num_reviews=airb$number_of_reviews
+length(num_reviews)
+
+cancel=as.factor(airb$cancellation_policy)
+length(cancel)
+summary(cancel)
+
+avail_365 = airb$availability_365
+length(avail_365)
+
+avail_30 = airb$availability_30
+length(avail_30)
+
+avail_60 = airb$availability_60
+length(avail_60)
+
+avail_90 = airb$availability_90
+length(avail_90)
+
+host_is_superhost = as.factor(airb$host_is_superhost)
+host_is_superhost = ifelse(host_is_superhost=="t",1,0)
+length(host_is_superhost)
+
+zip = airb$neighbourhood_cleansed
+length(zip)
+uni_zip=unique(zip)
+zip_sort=sort(uni_zip)
+zip[zip<78715] <- "zip_one"
+zip[78714<zip & zip<78730] <- "zip_two" 
+zip[78729<zip & zip<78745] <- "zip_three"
+zip[78744<zip & zip<78760] <- "zip_four"
+length(zip)
+summary(zip)
+
+
+host_list = airb$calculated_host_listings_count
+
+total_list = airb$host_total_listings_count
+length(total_list)
+
+host_id = airb$host_identity_verified
+
+#max_nights = airb$maximum_nights
+#length(max_nights)
+
+model = lm(airb$price~accommodates+bathrooms+bedrooms+beds+guests_included+
+             host_is_superhost+num_reviews+avail_365+avail_30+avail_60+avail_90+zip+total_list
+           +host_id+host_list+room_type)
+summary(model)
+
+levels(room_type)
+
+
+# best subset selection
+library(leaps)
+sub_select = regsubsets(price~accommodates+bathrooms+bedrooms+beds+guests_included+
+                          host_is_superhost+num_reviews+avail_365+avail_30+avail_60+avail_90+zip+total_list
+                        +host_id+host_list+room_type,airb) #16 variables 
+summary(sub_select)
+#accodmodates, bathrooms, bedrooms, super, num_rev, avail_30, avail_90, zip_one, 
+# room_type 
+
+red_model = lm(price~accommodates+bathrooms+bedrooms+
+                 host_is_superhost+num_reviews+avail_30+avail_90+zip
+               +room_type,airb)
+summary(red_model) 
+nrow(airb)
+
+
+############################################################################
+reg_var <- c('price','accommodates','bathrooms' ,'bedrooms'
+             ,'host_is_superhost','number_of_reviews',
+             'availability_30','availability_90','neighbourhood_cleansed',
+             'room_type')
+reg_data <- airb[reg_var]
+
+nrow(reg_data)
+
+
+
+
+```{r}
+# Split into train and test
+
+x = model.matrix(price~., reg_data[,-1])
+y = reg_data$price
+grid =  grid=10^seq(10,-2, length =100)
+
+set.seed(2)
+#train=(reg_data[1:8000,])
+#test = (reg_data[-(1:8000),])
+
+
+train = sample(1:nrow(x),nrow(x)/2)
+test = (-train)
+y.test = y[test]
+```
+
+```{r}
+#OLS
+
+ls = lm(price~.,data = reg_data, subset = train)
+ols.pred = predict(ls, data= test)
+error.ols = sqrt(mean((ols.pred -y.test)^2))
+error.ols # 244.3186
+```
+
+
+
+
+
+```{r}
+
+# Ridge Reg:
+# Initial work
+
+ridge.mod=glmnet(x[train,],y[train],alpha=0,lambda=grid, thresh=1e-12)
+
+# get best lambda:
+cv.out = cv.out=cv.glmnet(x[train,],y[train],alpha=0)
+plot(cv.out)
+bestlam =cv.out$lambda.min  # bestlam= 11.43546
+bestlam
+# MSE
+ridge.pred=predict (ridge.mod ,s=bestlam,newx=x[test ,])
+error.ridge = sqrt(mean((ridge.pred -y.test)^2))
+error.ridge # 143.096
+```
+
+
+```{r}
+
+# lasso:
+lasso.mod=glmnet(x[train,],y[train],alpha=1,lambda=grid)
+
+cv.out=cv.glmnet(x[train,],y[train],alpha=1)
+bestlam =cv.out$lambda.min # bestlam = 0.1863695
+bestlam
+
+lasso.pred=predict (lasso.mod ,s=bestlam ,newx=x[test,])
+error.lasso = sqrt(mean((lasso.pred -y.test)^2)) 
+error.lasso
+# error = 142.7406
+
+```
+
+
+```{r}
+
+
+#pcr:
+pcr.fit=pcr(price~., data=reg_data ,subset=train,scale=TRUE, validation="CV")
+validationplot(pcr.fit ,val.type="MSEP")
+summary (pcr.fit) # M = 6, RMSE = 152          
+```
+
+
+```{r}
+
+# PLS:
+pls.fit = plsr(price~.,data = reg_data, subset = train, scale = TRUE, validation = "CV")
+validationplot(pls.fit,val.type = "MSEP")
+summary(pls.fit) # M = 4, RMSE = 150.9    
+
+coef(pcr.fit)
+```
+
