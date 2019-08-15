@@ -6,7 +6,7 @@ airbnb <- airbnb[which(airbnb$city=='Austin'),]
 attach(airbnb)
 
 int_var_orig <- c('price','accommodates','bathrooms' ,'bedrooms','beds',
-             'guests_included','security_deposit','cleaning_fee')  
+                  'guests_included','security_deposit','cleaning_fee')  
 int_var <- c('price','accommodates','bathrooms' ,'bedrooms','beds',
              'guests_included','host_response_time','host_is_superhost'
              ,'number_of_reviews','cancellation_policy','maximum_nights','availability_365',
@@ -102,13 +102,13 @@ total_list = airb$host_total_listings_count
 length(total_list)
 
 host_id = airb$host_identity_verified
-  
+
 #max_nights = airb$maximum_nights
 #length(max_nights)
 
 model = lm(airb$price~accommodates+bathrooms+bedrooms+beds+guests_included+
-        host_is_superhost+num_reviews+avail_365+avail_30+avail_60+avail_90+zip+total_list
-        +host_id+host_list+room_type)
+             host_is_superhost+num_reviews+avail_365+avail_30+avail_60+avail_90+zip+total_list
+           +host_id+host_list+room_type)
 summary(model)
 
 levels(room_type)
@@ -167,7 +167,15 @@ MSE.ridge=mean((test[,'price']- ridge.pred)^2)
 MSE.ridge #30478.35 
 sqrt(MSE.ridge) #174.5892
 
-
-
-
-
+library(glmnet)
+train.matrix = model.matrix(price~., data=train)
+test.matrix = model.matrix(price~.,data=test)
+grid=10^seq(10,-2,length=100)
+lasso = cv.glmnet(train.matrix, train[,'price'], alpha=1, lambda=grid, thresh=1e-12)
+# the best lambda 
+best = lasso$lambda.min
+best 
+lasso.pred = predict(lasso, newx=test.matrix, s=best)
+MSE.lasso=mean((test[,'price']- lasso.pred)^2)
+MSE.lasso 
+sqrt(MSE.lasso)
