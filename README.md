@@ -1,3 +1,1 @@
-# Predictive-Modeling-Project-Source-Code
-
-Our Repository contains every members' code and the overall Airbnb Datasets we used.
+Predicted the pricing of properties by aggregating the data in a supervised regression problem with linear regression, Decision Trees to achieve the best possible accuracy.
